@@ -20,3 +20,6 @@ langchain-community
 langchain-chroma
 langchain-text-splitters
 langchain-huggingface
+
+rank-bm25
+numpy
