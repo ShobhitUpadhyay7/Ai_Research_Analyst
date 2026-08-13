@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.health import router as health_router
 from app.api.ingest import router as ingest_router
 from app.api.retrieve import router as retrieve_router
+from app.api.research import router as research_router
 from app.config import settings
 from app.db import SessionLocal, init_db
 from app.ingest.service import reindex_chunks
@@ -47,6 +48,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(ingest_router)
     app.include_router(retrieve_router)
+    app.include_router(research_router)
 
     @app.get("/", tags=["root"])
     def root() -> dict:
@@ -56,6 +58,8 @@ def create_app() -> FastAPI:
             "health": "/health",
             "ingest_stats": "/ingest/stats",
             "retrieve": "/retrieve",
+            "research_plan": "/research/plan",
+            "research_search": "/research/search",
         }
 
     return app

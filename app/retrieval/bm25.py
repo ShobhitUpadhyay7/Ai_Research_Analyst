@@ -3,7 +3,7 @@ import re
 from rank_bm25 import BM25Okapi
 from sqlalchemy.orm import Session, joinedload
 
-from app.models import Chunk
+from app.models import Chunk, Source
 from app.retrieval.schema import RetrievedChunk
 
 
@@ -19,20 +19,28 @@ def bm25_search(
     db: Session,
     query: str,
     k: int = 10,
+    source_types: list[str] | None = None,
 ) -> list[RetrievedChunk]:
     """
-    Perform BM25 lexical search over all stored chunks.
+    Perform BM25 lexical search over stored chunks.
+    Optionally filter by source_type.
     """
     query_tokens = tokenize(query)
 
     if not query_tokens:
         return []
 
-    chunks = (
-        db.query(Chunk)
-        .options(joinedload(Chunk.source))
-        .all()
-    )
+    chunks_query = db.query(Chunk).options(joinedload(Chunk.source))
+
+    if source_types:
+        chunks_query = chunks_query.join(
+            Source,
+            Chunk.source_id == Source.id,
+        ).filter(
+            Source.source_type.in_(source_types)
+        )
+
+    chunks = chunks_query.all()
 
     if not chunks:
         return []

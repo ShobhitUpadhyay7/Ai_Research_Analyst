@@ -23,3 +23,5 @@ langchain-huggingface
 
 rank-bm25
 numpy
+
+ddgs

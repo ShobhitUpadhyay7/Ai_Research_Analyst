@@ -5,20 +5,65 @@ from app.retrieval.schema import RetrievedChunk
 def vector_search(
     query: str,
     k: int = 10,
+    source_types: list[str] | None = None,
 ) -> list[RetrievedChunk]:
     """
     Perform semantic vector search using ChromaDB.
+
+    Optionally filters by source_type metadata.
     """
+
     vectorstore = get_vectorstore()
 
-    documents_with_scores = vectorstore.similarity_search_with_score(
-        query=query,
-        k=k,
-    )
+    where_filter = None
+
+    if source_types:
+        if len(source_types) == 1:
+            where_filter = {
+                "source_type": source_types[0],
+            }
+        else:
+            where_filter = {
+                "source_type": {
+                    "$in": source_types,
+                },
+            }
+
+    try:
+        if where_filter:
+            documents_with_scores = (
+                vectorstore.similarity_search_with_score(
+                    query=query,
+                    k=k,
+                    filter=where_filter,
+                )
+            )
+        else:
+            documents_with_scores = (
+                vectorstore.similarity_search_with_score(
+                    query=query,
+                    k=k,
+                )
+            )
+
+    except Exception:
+        # Fallback to unfiltered search
+        try:
+            documents_with_scores = (
+                vectorstore.similarity_search_with_score(
+                    query=query,
+                    k=k,
+                )
+            )
+        except Exception:
+            documents_with_scores = []
 
     results: list[RetrievedChunk] = []
 
-    for rank, (document, score) in enumerate(documents_with_scores, start=1):
+    for rank, (document, score) in enumerate(
+        documents_with_scores,
+        start=1,
+    ):
         metadata = document.metadata or {}
 
         chunk_id = metadata.get("chunk_id")
