@@ -46,17 +46,9 @@ def vector_search(
                 )
             )
 
-    except Exception:
-        # Fallback to unfiltered search
-        try:
-            documents_with_scores = (
-                vectorstore.similarity_search_with_score(
-                    query=query,
-                    k=k,
-                )
-            )
-        except Exception:
-            documents_with_scores = []
+    except Exception as error:
+        print(f"VECTOR SEARCH ERROR: {error}")
+        raise
 
     results: list[RetrievedChunk] = []
 
