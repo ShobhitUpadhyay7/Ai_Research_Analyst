@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -7,6 +7,8 @@ from app.agent.schemas import RoutePlan, TransformedQuery
 from app.agent.transformation import transform_query
 from app.config import settings
 from app.db import get_db
+from app.generation.schema import ReportEvidence
+from app.generation.service import generate_research_report
 from app.retrieval.schema import FusedEvidence
 from app.tools.internal_kb import search_internal_kb
 from app.tools.schema import WebSearchResult
@@ -45,6 +47,27 @@ class ResearchSearchResponse(BaseModel):
     internal_results: list[FusedEvidence]
     tech_docs_results: list[FusedEvidence]
     web_results: list[WebSearchResult]
+
+
+class ResearchReportRequest(BaseModel):
+    query: str = Field(min_length=1)
+
+    top_k: int = Field(default=5, ge=1, le=20)
+    retrieval_k: int = Field(default=10, ge=1, le=50)
+
+    max_evidence: int = Field(default=8, ge=1, le=20)
+    token_budget: int = Field(default=6000, ge=1000, le=20000)
+
+
+class ResearchReportResponse(BaseModel):
+    query: str
+    search_query: str
+
+    route_plan: RoutePlan
+    transformed_query: TransformedQuery
+
+    report_markdown: str
+    evidence: list[ReportEvidence]
 
 
 @router.post("/plan", response_model=ResearchPlanResponse)
@@ -111,3 +134,37 @@ def research_search(
         tech_docs_results=tech_docs_results,
         web_results=web_results,
     )
+
+
+@router.post("/report", response_model=ResearchReportResponse)
+def research_report(
+    payload: ResearchReportRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Runs the full research report pipeline:
+
+    routing
+    transformation
+    tool search
+    evidence collection
+    reranking
+    compression
+    report generation
+    """
+    try:
+        result = generate_research_report(
+            db=db,
+            query=payload.query,
+            top_k=payload.top_k,
+            retrieval_k=payload.retrieval_k,
+            max_evidence=payload.max_evidence,
+            token_budget=payload.token_budget,
+        )
+    except Exception as error:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Report generation failed: {error}",
+        )
+
+    return ResearchReportResponse(**result)

@@ -25,3 +25,5 @@ rank-bm25
 numpy
 
 ddgs
+
+tiktoken

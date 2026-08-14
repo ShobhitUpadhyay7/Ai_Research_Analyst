@@ -60,6 +60,7 @@ def create_app() -> FastAPI:
             "retrieve": "/retrieve",
             "research_plan": "/research/plan",
             "research_search": "/research/search",
+            "research_report": "/research/report",
         }
 
     return app
