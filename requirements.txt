@@ -27,3 +27,5 @@ numpy
 ddgs
 
 tiktoken
+
+pytest
