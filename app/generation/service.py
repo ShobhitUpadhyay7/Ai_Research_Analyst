@@ -11,6 +11,12 @@ from app.generation.schema import ReportEvidence
 from app.tools.internal_kb import search_internal_kb
 from app.tools.tech_docs import search_tech_docs
 from app.tools.web_search import search_web
+from app.verification.citations import verify_citations
+from app.verification.conflicts import detect_conflicts
+from app.verification.report_sections import (
+    build_citation_verification_section,
+    build_verified_conflicts_section,
+)
 
 
 def generate_research_report(
@@ -20,6 +26,9 @@ def generate_research_report(
     retrieval_k: int = 10,
     max_evidence: int = 8,
     token_budget: int = 6000,
+    verify: bool = True,
+    detect_source_conflicts: bool = True,
+    check_urls: bool = False,
 ) -> dict:
     """
     Full research report pipeline:
@@ -39,6 +48,10 @@ def generate_research_report(
     Context Compression
     ↓
     Report Generation
+    ↓
+    Citation Verification
+    ↓
+    Conflict Detection
     """
     route_plan = route_query(query)
     transformed_query = transform_query(query)
@@ -98,6 +111,32 @@ def generate_research_report(
         evidence=compressed_evidence,
     )
 
+    citation_verification = []
+    conflicts = []
+
+    if verify:
+        citation_verification = verify_citations(
+            report_markdown=report_markdown,
+            evidence=compressed_evidence,
+            check_urls=check_urls,
+        )
+
+    if detect_source_conflicts:
+        conflicts = detect_conflicts(
+            query=search_query,
+            evidence=compressed_evidence,
+        )
+
+    if verify:
+        report_markdown += "\n\n" + build_citation_verification_section(
+            citation_verification
+        )
+
+    if detect_source_conflicts:
+        report_markdown += "\n\n" + build_verified_conflicts_section(
+            conflicts
+        )
+
     report_evidence = [
         ReportEvidence(
             citation_key=item.citation_key,
@@ -116,4 +155,6 @@ def generate_research_report(
         "transformed_query": transformed_query,
         "report_markdown": report_markdown,
         "evidence": report_evidence,
+        "citation_verification": citation_verification,
+        "conflicts": conflicts,
     }

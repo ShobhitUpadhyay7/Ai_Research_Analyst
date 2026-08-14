@@ -14,6 +14,7 @@ from app.tools.internal_kb import search_internal_kb
 from app.tools.schema import WebSearchResult
 from app.tools.tech_docs import search_tech_docs
 from app.tools.web_search import search_web
+from app.verification.schema import CitationVerification, Conflict
 
 
 router = APIRouter(
@@ -58,6 +59,10 @@ class ResearchReportRequest(BaseModel):
     max_evidence: int = Field(default=8, ge=1, le=20)
     token_budget: int = Field(default=6000, ge=1000, le=20000)
 
+    verify: bool = True
+    detect_conflicts: bool = True
+    check_urls: bool = False
+
 
 class ResearchReportResponse(BaseModel):
     query: str
@@ -68,6 +73,9 @@ class ResearchReportResponse(BaseModel):
 
     report_markdown: str
     evidence: list[ReportEvidence]
+
+    citation_verification: list[CitationVerification]
+    conflicts: list[Conflict]
 
 
 @router.post("/plan", response_model=ResearchPlanResponse)
@@ -151,6 +159,8 @@ def research_report(
     reranking
     compression
     report generation
+    citation verification
+    conflict detection
     """
     try:
         result = generate_research_report(
@@ -160,6 +170,9 @@ def research_report(
             retrieval_k=payload.retrieval_k,
             max_evidence=payload.max_evidence,
             token_budget=payload.token_budget,
+            verify=payload.verify,
+            detect_source_conflicts=payload.detect_conflicts,
+            check_urls=payload.check_urls,
         )
     except Exception as error:
         raise HTTPException(
